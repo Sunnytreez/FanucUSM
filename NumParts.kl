@@ -1,0 +1,94 @@
+
+-- This is the new program that reads the variable set on the Python side to number of parts to pick, the input variable from the user.
+-------------------------------------------------------------------------------
+PROGRAM tcpserv32
+%STACKSIZE = 4000
+%NOLOCKGROUP
+%NOPAUSE=ERROR+COMMAND+TPENABLE
+--%ENVIRONMENT PBCORE
+%ENVIRONMENT uif
+%ENVIRONMENT sysdef
+%ENVIRONMENT memo
+%ENVIRONMENT kclop
+%ENVIRONMENT bynam
+%ENVIRONMENT fdev
+%ENVIRONMENT flbt
+%ENVIRONMENT regope
+%ENVIRONMENT pbcore
+%INCLUDE klevccdf
+%INCLUDE klevkeys
+%INCLUDE klevkmsk
+-------------------------------------------------------------------------------
+VAR
+file_var : FILE
+tmp_int : INTEGER
+tmp_int1 : INTEGER
+tmp_str : STRING[128]
+tmp_str1 : STRING[128]
+status : INTEGER
+entry : INTEGER
+registerval: REAL
+regnum: INTEGER
+-------------------------------------------------------------------------------
+BEGIN
+	regnum=0 --set to whichever start you want positional data to start.	I should make this a variable in the program somehow by reading a register
+	SET_FILE_ATR(file_var, ATR_IA)
+	-- set the server port before doing a connect
+	SET_VAR(entry, '*SYSTEM*','$HOSTS_CFG[3].$SERVER_PORT',59002,status)
+	WRITE('Disconnecting..',CR)
+	MSG_DISCO('S3:',status)
+	WRITE('Connecting..',CR)
+	MSG_CONNECT('S3:',status)
+	WRITE(' Connect Status = ',status,CR)
+	IF status = 0 THEN
+		-- Open S3:
+		WRITE ('Opening',CR)
+		--FOR tmp_int1 = 1 TO 20 DO
+			OPEN FILE file_var ('rw','S3:')
+			status = IO_STATUS(file_var)
+			WRITE (status,CR)
+			IF status = 0 THE
+			WRITE('Reading',CR)
+					-- Read 10 bytes
+					BYTES_AHEAD(file_var, entry, status)
+					WRITE(entry, status, CR)
+					READ file_var (tmp_str::10)
+					WRITE(tmp_str, CR)
+					CNV_STR_REAL(tmp_str, registerval)
+					SET_REAL_REG(99, registerval, status)  --Set the 99 register number to whichever number you want number of parts to be in.  Should probably also be a register value
+					status = IO_STATUS(file_var)
+					WRITE (status, CR)
+					-- Write 10 bytes
+					WRITE (tmp_str::10, CR)
+					WRITE file_var(tmp_str::10)
+					status = IO_STATUS(file_var)
+					WRITE (status, CR)
+
+				-- write an integer
+				FOR tmp_int = 1 TO 20 DO
+					regnum=regnum+1
+					WRITE('Reading',CR)
+					-- Read 10 bytes
+					BYTES_AHEAD(file_var, entry, status)
+					WRITE(entry, status, CR)
+					READ file_var (tmp_str::10)
+					WRITE(tmp_str, CR)
+					CNV_STR_REAL(tmp_str, registerval)
+					SET_REAL_REG(regnum, registerval, status)
+					status = IO_STATUS(file_var)
+					WRITE (status, CR)
+					-- Write 10 bytes
+					WRITE (tmp_str::10, CR)
+					WRITE file_var(tmp_str::10)
+					status = IO_STATUS(file_var)
+					WRITE (status, CR)
+				ENDFOR
+				CLOSE FILE file_var
+			ENDIF
+	--	ENDFOR
+		WRITE('Disconnecting..',CR)
+		MSG_DISCO('S3:',status)
+		WRITE('Done.',CR)
+	ENDIF
+	WRITE('End of File.',CR)
+END tcpserv32
